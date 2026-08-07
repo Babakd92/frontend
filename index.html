@@ -153,6 +153,7 @@
       <button type="button">What is the river water level near Columbus, Ohio for the last 30 days?</button>
       <button type="button">What is the groundwater level near Wichita, Kansas over the past 5 years?</button>
       <button type="button">Is Fresno, California currently in drought?</button>
+      <button type="button">What watershed is Columbus, Ohio in?</button>
     </div>
     <form id="chat-form">
       <input type="text" id="input" placeholder="Ask a hydrology or climate question..." autocomplete="off">
@@ -397,19 +398,30 @@
     L.marker(queryLatLng, { icon: queryIcon }).addTo(map).bindTooltip(queryLabel || 'Query location');
     caption.innerHTML = `<span><span class="dot" style="background:var(--teal)"></span>${escapeHtml(queryLabel || 'Query location')}</span>`;
 
-    const bounds = [queryLatLng];
+    const bounds = L.latLngBounds([queryLatLng]);
+    let hasExtent = false;
+
+    if (location.boundary) {
+      const polygon = L.polygon(location.boundary, {
+        color: '#0FB5A6', weight: 2, fillColor: '#0FB5A6', fillOpacity: 0.1,
+      }).addTo(map);
+      bounds.extend(polygon.getBounds());
+      hasExtent = true;
+      caption.innerHTML += `<span><span class="dot" style="background:var(--teal);opacity:0.35"></span>Watershed boundary</span>`;
+    }
 
     if (location.station) {
       const stationLatLng = [location.station.latitude, location.station.longitude];
       L.marker(stationLatLng, { icon: stationIcon }).addTo(map)
         .bindTooltip(location.station.name || 'Station used');
       L.polyline([queryLatLng, stationLatLng], { color: '#FF9A5A', weight: 2, dashArray: '5,5' }).addTo(map);
-      bounds.push(stationLatLng);
+      bounds.extend(stationLatLng);
+      hasExtent = true;
       const distKm = (map.distance(queryLatLng, stationLatLng) / 1000).toFixed(1);
       caption.innerHTML += `<span><span class="dot" style="background:var(--coral-2)"></span>${escapeHtml(location.station.name || 'Station used')} (${distKm} km away)</span>`;
     }
 
-    if (bounds.length > 1) {
+    if (hasExtent) {
       map.fitBounds(bounds, { padding: [30, 30] });
     } else {
       map.setView(queryLatLng, 10);
