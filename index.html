@@ -156,6 +156,8 @@
       <button type="button">What watershed is Columbus, Ohio in?</button>
       <button type="button">What is the streamflow for HUC 05060001?</button>
       <button type="button">What is the watershed-averaged evapotranspiration for HUC 05060001 in 2023?</button>
+      <button type="button">What is the NDVI for HUC 05060001 in 2023?</button>
+      <button type="button">Show me the NDVI heatmap for HUC 05060001 in August 2023</button>
     </div>
     <form id="chat-form">
       <input type="text" id="input" placeholder="Ask a hydrology or climate question..." autocomplete="off">
@@ -403,9 +405,18 @@
     const bounds = L.latLngBounds([queryLatLng]);
     let hasExtent = false;
 
+    if (location.heatmap) {
+      const overlay = L.imageOverlay(location.heatmap.url, location.heatmap.bounds, { opacity: 0.85 }).addTo(map);
+      bounds.extend(overlay.getBounds());
+      hasExtent = true;
+      caption.innerHTML += `<span><span class="dot" style="background:linear-gradient(90deg,#a50026,#1a9850)"></span>${escapeHtml(location.heatmap.label || 'NDVI heatmap')} (brown = sparse, green = dense)</span>`;
+    }
+
     if (location.boundary) {
+      // Drawn after the heatmap (if any) so the outline stroke stays visible on top of
+      // the raster instead of being covered by it.
       const polygon = L.polygon(location.boundary, {
-        color: '#0FB5A6', weight: 2, fillColor: '#0FB5A6', fillOpacity: 0.1,
+        color: '#0FB5A6', weight: 2, fillColor: '#0FB5A6', fillOpacity: location.heatmap ? 0 : 0.1,
       }).addTo(map);
       bounds.extend(polygon.getBounds());
       hasExtent = true;
