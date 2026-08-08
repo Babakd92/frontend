@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -86,6 +87,9 @@
   .chart-grid .chart-box{margin-top:0;height:260px;}
   @media (max-width:700px){ .chart-grid{grid-template-columns:1fr;} }
 
+  .plotly-box{margin-top:10px;background:rgba(255,255,255,0.94);border-radius:14px;padding:12px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.12);align-self:stretch;overflow-x:auto;}
+
   .map-box{margin-top:10px;background:rgba(255,255,255,0.94);border-radius:14px;padding:10px;
     box-shadow:0 8px 24px rgba(0,0,0,0.12);align-self:stretch;}
   .map-box .leaflet-container{height:240px;border-radius:10px;}
@@ -158,6 +162,7 @@
       <button type="button">What is the watershed-averaged evapotranspiration for HUC 05060001 in 2023?</button>
       <button type="button">What is the NDVI for HUC 05060001 in 2023?</button>
       <button type="button">Show me the NDVI heatmap for HUC 05060001 in August 2023</button>
+      <button type="button">What is the predicted water level in the Huron River over the next few days?</button>
     </div>
     <form id="chat-form">
       <input type="text" id="input" placeholder="Ask a hydrology or climate question..." autocomplete="off">
@@ -334,6 +339,9 @@
         data.charts.forEach(c => div.appendChild(renderChart(c)));
       }
     }
+    if (!isError && data.plotly) {
+      div.appendChild(renderPlotlyChart(data.plotly));
+    }
     if (!isError && data.location) {
       div.appendChild(renderMap(data.location));
     }
@@ -368,6 +376,21 @@
     });
     wrap.appendChild(t);
     return wrap;
+  }
+
+  // Renders a Plotly chart's data/layout exactly as extracted from the source dashboard
+  // (flood_forecast) -- reproducing that dashboard's own chart verbatim rather than
+  // reimplementing its dual-axis/multi-scenario/flood-stage-band design in Chart.js.
+  function renderPlotlyChart(plotly) {
+    const box = document.createElement('div');
+    box.className = 'plotly-box';
+    const div = document.createElement('div');
+    div.id = `plotly-${chartCounter++}`;
+    box.appendChild(div);
+    requestAnimationFrame(() => {
+      Plotly.newPlot(div, plotly.data, plotly.layout, { responsive: true, displaylogo: false });
+    });
+    return box;
   }
 
   // Shows where the answer actually came from: a pin for the resolved query point, and
