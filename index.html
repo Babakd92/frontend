@@ -165,6 +165,7 @@
       <button type="button">What is the predicted water level in the Huron River over the next few days?</button>
       <button type="button">What is the watershed-averaged soil moisture for HUC 05060001 from 2026-07-25 to 2026-08-01?</button>
       <button type="button">Show me the soil moisture heatmap for HUC 05060001 on 2026-08-01</button>
+      <button type="button">What was the flood extent in HUC 05100201 around 2022-07-28 compared to 2022-06-15?</button>
     </div>
     <form id="chat-form">
       <input type="text" id="input" placeholder="Ask a hydrology or climate question..." autocomplete="off">
@@ -434,7 +435,8 @@
       const overlay = L.imageOverlay(location.heatmap.url, location.heatmap.bounds, { opacity: 0.85 }).addTo(map);
       bounds.extend(overlay.getBounds());
       hasExtent = true;
-      caption.innerHTML += `<span><span class="dot" style="background:linear-gradient(90deg,#a50026,#1a9850)"></span>${escapeHtml(location.heatmap.label || 'NDVI heatmap')} (brown = sparse, green = dense)</span>`;
+      const legendText = location.heatmap.legend ? ` (${location.heatmap.legend})` : '';
+      caption.innerHTML += `<span><span class="dot" style="background:linear-gradient(90deg,#8c510a,#01665e)"></span>${escapeHtml(location.heatmap.label || 'Heatmap')}${escapeHtml(legendText)}</span>`;
     }
 
     if (location.boundary) {
