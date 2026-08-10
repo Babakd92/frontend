@@ -181,6 +181,8 @@
       <button type="button">What was the flood extent in HUC 05100201 around 2022-07-28 compared to 2022-06-15?</button>
       <button type="button">What was the watershed-averaged precipitation for HUC 05060001 from 2023-06-01 to 2023-06-15?</button>
       <button type="button">Show me the precipitation heatmap for HUC 05100201 from 2022-07-20 to 2022-07-29</button>
+      <button type="button">How well does antecedent rainfall predict soil moisture in HUC 05060001 from 2023-05-01 to 2023-08-31?</button>
+      <button type="button">Show me the heatmap for NDVI, soil moisture, and rainfall for the River Raisin watershed in Michigan in July 2025</button>
     </div>
     <form id="chat-form">
       <input type="text" id="input" placeholder="Ask a hydrology or climate question..." autocomplete="off">
@@ -563,6 +565,7 @@
       else if (chart.type === 'climatology_temp' || chart.type === 'climatology_precip') drawClimatologyChart(canvas, chart);
       else if (chart.type === 'streamflow_discharge') drawStreamflowDischargeChart(canvas, chart);
       else if (chart.type === 'river_level_temp') drawRiverLevelTempChart(canvas, chart);
+      else if (chart.type === 'correlation_scatter') drawCorrelationScatterChart(canvas, chart);
       else drawGenericLineChart(canvas, chart);
     });
     return box;
@@ -588,6 +591,34 @@
         scales: {
           x: { title: { display: true, text: chart.x_label, color: '#1A1226' }, ticks:{color:'#1A1226'} },
           y: { title: { display: true, text: chart.y_label, color: '#1A1226' }, ticks:{color:'#1A1226'} },
+        },
+      },
+    });
+  }
+
+  // Scatter of the raw paired samples (antecedent rainfall vs. same-day soil moisture)
+  // backing a computed Pearson r -- gives the number in the table an actual point
+  // cloud to look at instead of asking the user to trust a bare figure.
+  function drawCorrelationScatterChart(canvas, chart) {
+    new Chart(canvas, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: chart.title,
+          data: chart.points,
+          backgroundColor: 'rgba(15,181,166,0.65)',
+          borderColor: '#0B8577',
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: chart.title, color: '#1A1226', font: { size: 12 } },
+        },
+        scales: {
+          x: { type: 'linear', title: { display: true, text: chart.x_label, color: '#1A1226' }, ticks: { color: '#1A1226' } },
+          y: { title: { display: true, text: chart.y_label, color: '#1A1226' }, ticks: { color: '#1A1226' } },
         },
       },
     });
