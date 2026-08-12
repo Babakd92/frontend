@@ -186,6 +186,7 @@
       <button type="button">What crops are grown in HUC 05060001 and what's the soil like there?</button>
       <button type="button">Show me the cropland heatmap for HUC 05060001 in 2023</button>
       <button type="button">Assess agricultural water-quality risk in River Raisin Watershed in Michigan in 2025. Where would BMPs help most?</button>
+      <button type="button">How much runoff would a 3-inch storm generate in HUC 05060001, and how much would cover crops reduce it?</button>
     </div>
     <form id="chat-form">
       <input type="text" id="input" placeholder="Ask a hydrology or climate question..." autocomplete="off">
@@ -569,6 +570,7 @@
       else if (chart.type === 'streamflow_discharge') drawStreamflowDischargeChart(canvas, chart);
       else if (chart.type === 'river_level_temp') drawRiverLevelTempChart(canvas, chart);
       else if (chart.type === 'correlation_scatter') drawCorrelationScatterChart(canvas, chart);
+      else if (chart.type === 'runoff_comparison_bar') drawRunoffComparisonChart(canvas, chart);
       else drawGenericLineChart(canvas, chart);
     });
     return box;
@@ -621,6 +623,36 @@
         },
         scales: {
           x: { type: 'linear', title: { display: true, text: chart.x_label, color: '#1A1226' }, ticks: { color: '#1A1226' } },
+          y: { title: { display: true, text: chart.y_label, color: '#1A1226' }, ticks: { color: '#1A1226' } },
+        },
+      },
+    });
+  }
+
+  // Baseline (current practice) vs. BMP-scenario (conservation tillage/cover crops)
+  // runoff volume, side by side -- gives the reduction percentage in the table an
+  // actual visual comparison rather than asking the user to trust two bare numbers.
+  function drawRunoffComparisonChart(canvas, chart) {
+    new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: chart.labels,
+        datasets: [{
+          label: chart.y_label,
+          data: chart.values,
+          backgroundColor: ['rgba(255,107,122,0.65)', 'rgba(15,181,166,0.65)'],
+          borderColor: ['#FF6B7A', '#0B8577'],
+          borderWidth: 1.5,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: chart.title, color: '#1A1226', font: { size: 12 } },
+        },
+        scales: {
+          x: { ticks: { color: '#1A1226' } },
           y: { title: { display: true, text: chart.y_label, color: '#1A1226' }, ticks: { color: '#1A1226' } },
         },
       },
