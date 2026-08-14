@@ -117,6 +117,12 @@
   .typing span:nth-child(2){animation-delay:.15s;} .typing span:nth-child(3){animation-delay:.3s;}
   @keyframes blink{0%,80%,100%{opacity:.25;}40%{opacity:.95;}}
 
+  .status-row{display:flex;align-items:center;gap:10px;padding:4px 2px;}
+  .status-row .typing{padding:0;}
+  .status-text{font-size:13.5px;color:rgba(26,18,38,0.55);font-weight:500;
+    animation:fade-in .25s ease;}
+  @keyframes fade-in{from{opacity:0;transform:translateY(2px);}to{opacity:1;transform:translateY(0);}}
+
   .suggestions{display:flex;flex-wrap:wrap;gap:9px;padding:14px 22px 0;}
   .suggestions button{
     font-family:'Inter',sans-serif;background:rgba(26,18,38,0.05);color:var(--ink);border:1px solid rgba(26,18,38,0.14);
@@ -299,6 +305,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, history }),
       });
+      typingEl._clearStatusTimers();
       typingEl.remove();
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
@@ -310,6 +317,7 @@
       history.push({ role: 'user', content: message });
       history.push({ role: 'assistant', content: data.reply });
     } catch (err) {
+      typingEl._clearStatusTimers();
       typingEl.remove();
       addAssistantMessage({ reply: `Could not reach Hydroinformatics Copilot's backend: ${err.message}. If BACKEND_URL is still the placeholder, this page hasn't been configured yet.` }, true);
     } finally {
@@ -328,12 +336,33 @@
     log.scrollTop = log.scrollHeight;
   }
 
+  // Simulated progress stages while waiting on the single blocking /chat request --
+  // the backend doesn't stream real step events, so this is a time-based illusion of
+  // progress (like "Thinking" / "Searching" indicators elsewhere), not a literal
+  // report of what the backend is doing at that instant. Timings are tuned loosely
+  // around this app's observed response times (a few seconds for simple point
+  // queries, 10-20+s for climate_outlook and other heavy watershed calls).
+  const STATUS_STAGES = [
+    'Thinking',
+    'Fetching data',
+    'Processing data',
+    'Still working — this one involves a larger dataset',
+  ];
+  const STATUS_STAGE_DELAYS_MS = [1200, 4000, 11000];
+
   function addTypingIndicator() {
     const div = document.createElement('div');
     div.className = 'msg assistant';
-    div.innerHTML = `<div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+    div.innerHTML = `<div class="bubble"><div class="status-row"><div class="typing"><span></span><span></span><span></span></div><span class="status-text">${STATUS_STAGES[0]}</span></div></div>`;
     log.appendChild(div);
     log.scrollTop = log.scrollHeight;
+
+    const statusText = div.querySelector('.status-text');
+    const timers = STATUS_STAGE_DELAYS_MS.map((delay, i) => setTimeout(() => {
+      statusText.textContent = STATUS_STAGES[i + 1];
+      log.scrollTop = log.scrollHeight;
+    }, delay));
+    div._clearStatusTimers = () => timers.forEach(clearTimeout);
     return div;
   }
 
