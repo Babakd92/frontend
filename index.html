@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hydroinformatics Intelligence Platform (HIP)</title>
+<title>Hydroinformatics Copilot</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -15,7 +15,7 @@
   :root{
     --teal:#0FB5A6; --teal-dark:#0B8577; --indigo:#3E2E7A;
     --coral:#FF6B7A; --coral-2:#FF9A5A;
-    --glass:rgba(18,12,30,0.34); --glass-strong:rgba(255,255,255,0.26);
+    --glass:#0B0810; --glass-strong:rgba(255,255,255,0.26);
     --glass-border:rgba(255,255,255,0.28); --ink:#1A1226;
     --shadow:0 24px 70px rgba(15,5,25,0.45);
   }
@@ -24,7 +24,7 @@
   body{
     height:100vh;height:100dvh;margin:0;
     font-family:'Inter',sans-serif;color:#fff;
-    background:url('background_3.jpg') center center / cover no-repeat fixed, #5B7FE0;
+    background:url('background_3.jpg') center center / cover no-repeat fixed, #000;
     display:flex;flex-direction:column;position:relative;overflow:hidden;
   }
   body::before{
@@ -44,7 +44,7 @@
 
   .card{
     flex:1;display:flex;flex-direction:column;min-height:0;
-    background:var(--glass);backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);
+    background:var(--glass);
     border:1px solid var(--glass-border);border-radius:26px;
     box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,0.45);
     overflow:hidden;
@@ -155,7 +155,7 @@
 <body>
 <div class="shell">
   <header>
-    <h1>Hydroinformatics Intelligence Platform (HIP)</h1>
+    <h1>Hydroinformatics Copilot</h1>
   </header>
 
   <div class="card">
@@ -190,6 +190,8 @@
       <button type="button">What are the measured nitrate levels in HUC 05060001 over the past two years?</button>
       <button type="button">Show me monthly nitrate, PO4, total phosphorus, and total nitrogen for the River Raisin watershed in Michigan over the past 2 years</button>
       <button type="button">Does rainfall correlate with measured nitrate levels in the River Raisin watershed in Michigan?</button>
+      <button type="button">What is the climate outlook for the River Raisin watershed?</button>
+      <button type="button">What is the climate outlook for the Western Lake Erie Basin?</button>
     </div>
     <form id="chat-form">
       <input type="text" id="input" placeholder="Ask a hydrology or climate question..." autocomplete="off">
@@ -311,7 +313,7 @@
       history.push({ role: 'assistant', content: data.reply });
     } catch (err) {
       typingEl.remove();
-      addAssistantMessage({ reply: `Could not reach HIP's backend: ${err.message}. If BACKEND_URL is still the placeholder, this page hasn't been configured yet.` }, true);
+      addAssistantMessage({ reply: `Could not reach Hydroinformatics Copilot's backend: ${err.message}. If BACKEND_URL is still the placeholder, this page hasn't been configured yet.` }, true);
     } finally {
       input.disabled = false;
       sendBtn.disabled = false;
