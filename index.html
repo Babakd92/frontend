@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hydroinformatics AI Agent</title>
+<title>HydroinformatiX</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --teal:#0FB5A6; --teal-dark:#0B8577; --indigo:#3E2E7A;
+    --teal:#0FB5A6; --teal-dark:#0B8577; --indigo:#3E2E7A; --indigo-glow:#7C6CF0;
     --coral:#FF6B7A; --coral-2:#FF9A5A;
     --glass:#FFFFFF; --glass-strong:rgba(255,255,255,0.26);
     --glass-border:rgba(26,18,38,0.10); --ink:#1A1226;
@@ -24,23 +24,66 @@
   body{
     height:100vh;height:100dvh;margin:0;
     font-family:'Inter',sans-serif;color:#fff;
-    background:url('background_3.jpg') center center / cover no-repeat fixed, #000;
+    background:
+      radial-gradient(120% 90% at 12% -8%, rgba(62,46,122,.55), transparent 55%),
+      radial-gradient(120% 90% at 88% 108%, rgba(15,181,166,.42), transparent 55%),
+      #0A0E13;
     display:flex;flex-direction:column;position:relative;overflow:hidden;
   }
+  /* Faint bathymetric-style contour lines, the same decorative device used behind
+     the "Deep Current" wordmark treatment, now stretched across the whole page. */
   body::before{
-    content:'';position:fixed;inset:0;
-    background:linear-gradient(180deg, rgba(20,10,35,.38), rgba(20,10,20,.22) 45%, rgba(10,10,10,.42));
-    pointer-events:none;z-index:0;
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+    background-image:url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="none"%3E%3Cpath d="M0,620 C220,580 420,660 700,620 C980,580 1180,650 1600,600" fill="none" stroke="%230FB5A6" stroke-width="1.4" opacity=".5"/%3E%3Cpath d="M0,700 C260,660 460,730 760,700 C1040,670 1260,715 1600,670" fill="none" stroke="%230FB5A6" stroke-width="1.4" opacity=".35"/%3E%3Cpath d="M0,780 C300,745 500,800 820,775 C1080,755 1320,790 1600,750" fill="none" stroke="%233E2E7A" stroke-width="1.4" opacity=".4"/%3E%3C/svg%3E');
+    background-repeat:no-repeat;background-size:cover;background-position:center bottom;
   }
   .shell{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;min-height:0;
     max-width:1280px;margin:0 auto;width:100%;padding:26px 20px 20px;}
 
-  header{display:flex;align-items:baseline;justify-content:center;text-align:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
+  header{display:flex;align-items:baseline;justify-content:center;text-align:center;gap:14px;margin-bottom:10px;flex-wrap:wrap;}
   header h1{
-    margin:0;font-family:'Sora',sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.02em;
-    background:linear-gradient(90deg,#fff, #FFE3C2);-webkit-background-clip:text;background-clip:text;color:transparent;
+    margin:0;font-family:'Orbitron',sans-serif;font-weight:800;font-size:30px;letter-spacing:.045em;
+    background:linear-gradient(100deg,#8EF3E4 0%,var(--teal) 35%,var(--indigo-glow) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 46px rgba(15,181,166,.35);
   }
-  header p{margin:0;font-size:13.5px;color:rgba(255,255,255,0.82);font-weight:500;}
+
+  .subheader-row{
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+    gap:14px;margin-bottom:14px;
+  }
+  .tagline{margin:0;font-size:18px;color:rgba(255,255,255,0.75);font-weight:500;}
+
+  .info-bar{display:flex;flex-wrap:wrap;gap:10px;}
+  .info-toggle{
+    font-family:'Orbitron',sans-serif;font-size:12px;font-weight:600;letter-spacing:.02em;color:#fff;
+    background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);border-radius:999px;
+    padding:9px 16px;cursor:pointer;display:flex;align-items:center;gap:7px;
+    transition:background .15s ease,transform .15s ease;
+  }
+  .info-toggle:hover{background:rgba(255,255,255,0.22);transform:translateY(-1px);}
+  .info-toggle.active{background:rgba(255,255,255,0.28);}
+  .info-toggle .caret{font-size:10px;transition:transform .2s ease;}
+  .info-toggle.active .caret{transform:rotate(180deg);}
+
+  .info-panel{
+    max-height:0;overflow:hidden;opacity:0;
+    transition:max-height .3s ease,opacity .25s ease,margin .3s ease;
+    background:var(--glass);border:1px solid var(--glass-border);border-radius:18px;
+  }
+  .info-panel.open{max-height:2200px;opacity:1;margin-bottom:14px;}
+  .info-panel-inner{padding:18px 22px;}
+  .info-panel-inner p{margin:0 0 10px;font-size:14px;line-height:1.6;color:var(--ink);}
+  .info-panel-inner p:last-child{margin-bottom:0;}
+  .info-panel-inner h3{
+    margin:16px 0 10px;font-family:'Orbitron',sans-serif;font-weight:700;font-size:12.5px;
+    color:rgba(26,18,38,0.85);letter-spacing:.04em;text-transform:uppercase;
+  }
+  .info-panel-inner ul{margin:0;padding-left:20px;font-size:14px;line-height:1.65;color:var(--ink);}
+  .info-panel-inner li{margin-bottom:8px;}
+  .info-panel-inner li:last-child{margin-bottom:0;}
+  .info-panel-inner li b{color:var(--teal-dark);}
+  .info-panel .suggestions{display:flex;flex-wrap:wrap;gap:9px;padding:0;}
 
   .card{
     flex:1;display:flex;flex-direction:column;min-height:0;
@@ -102,8 +145,8 @@
   .meta{font-size:12px;color:rgba(26,18,38,0.65);margin-top:8px;padding:0 4px;max-width:92%;}
   .meta b{color:var(--teal-dark);}
 
-  .table-label{margin-top:14px;font-family:'Sora',sans-serif;font-weight:700;font-size:13px;
-    color:rgba(26,18,38,0.85);letter-spacing:.02em;padding:0 2px;}
+  .table-label{margin-top:14px;font-family:'Orbitron',sans-serif;font-weight:700;font-size:11.5px;
+    color:rgba(26,18,38,0.85);letter-spacing:.04em;padding:0 2px;text-transform:uppercase;}
   .table-label:first-of-type{margin-top:10px;}
   .table-label + .table-wrap{margin-top:6px;}
   .table-wrap{margin-top:10px;overflow-x:auto;border-radius:14px;background:rgba(255,255,255,0.94);
@@ -183,7 +226,7 @@
     animation:fade-in .25s ease;}
   @keyframes fade-in{from{opacity:0;transform:translateY(2px);}to{opacity:1;transform:translateY(0);}}
 
-  .suggestions{display:flex;flex-wrap:wrap;gap:9px;padding:14px 22px 0;}
+  .suggestions{display:flex;flex-wrap:wrap;gap:9px;}
   .suggestions button{
     font-family:'Inter',sans-serif;background:rgba(26,18,38,0.05);color:var(--ink);border:1px solid rgba(26,18,38,0.14);
     border-radius:999px;font-weight:500;font-size:13px;padding:9px 16px;cursor:pointer;transition:.15s ease;
@@ -198,7 +241,7 @@
   input[type=text]::placeholder{color:rgba(26,18,38,0.45);}
   input[type=text]:focus{outline:none;border-color:var(--coral);box-shadow:0 0 0 4px rgba(255,107,122,0.25);}
   #send-btn{
-    font-family:'Sora',sans-serif;font-size:15px;font-weight:700;padding:14px 26px;border-radius:14px;border:none;
+    font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;letter-spacing:.03em;padding:14px 26px;border-radius:14px;border:none;
     background:linear-gradient(120deg,var(--coral),var(--coral-2));color:#fff;cursor:pointer;
     box-shadow:0 10px 26px rgba(255,107,122,0.4);transition:transform .12s ease,background .15s ease,box-shadow .15s ease;
   }
@@ -216,19 +259,43 @@
     .shell{padding:16px 12px 12px;}
     #log{padding:18px;}
     form{padding:14px;}
-    .suggestions{padding:12px 14px 0;}
+    .info-panel-inner{padding:14px 16px;}
   }
 </style>
 </head>
 <body>
 <div class="shell">
   <header>
-    <h1>Hydroinformatics AI Agent</h1>
+    <h1>HydroinformatiX</h1>
   </header>
 
-  <div class="card">
-    <div id="log"></div>
-    <div class="suggestions" id="suggestions">
+  <div class="subheader-row">
+    <p class="tagline">Explore, analyze, and understand hydrology data.</p>
+    <div class="info-bar">
+      <button type="button" class="info-toggle" data-panel="panel-about">Meet the Agent <span class="caret">&#9660;</span></button>
+      <button type="button" class="info-toggle" data-panel="panel-examples">Need Inspiration? <span class="caret">&#9660;</span></button>
+    </div>
+  </div>
+
+  <div class="info-panel" id="panel-about">
+    <div class="info-panel-inner">
+      <p>HydroinformatiX is a chat assistant built for questions about water, weather, and climate. Instead of guessing from memory or searching the open web, it pulls live figures from trusted sources such as USGS, NASA, NOAA, USDA, and EPA, along with satellite records. Every answer comes with a cited source, and usually a table, chart, or map showing exactly where the numbers came from.</p>
+      <p>Ask about a single location, such as a city or an address, or about an entire river watershed. Answers can draw on historical records, near real-time conditions, or climate projections decades into the future, depending on what you need.</p>
+      <h3>What it can help with</h3>
+      <ul>
+        <li><b>Weather and climate:</b> current conditions, recent history, and multi-decade climate outlooks for a city or an entire river watershed.</li>
+        <li><b>Rivers and groundwater:</b> streamflow, river water level, groundwater depth, and short-term flood forecasts.</li>
+        <li><b>Drought:</b> whether a place is currently in drought, and how that compares to its own history.</li>
+        <li><b>Water quality:</b> measured nitrate, phosphorus, turbidity, and other pollutant levels in a watershed, and whether rainfall is statistically linked to them.</li>
+        <li><b>Land and agriculture:</b> crop types, soil characteristics, expected storm runoff, and where conservation practices like cover crops would help most.</li>
+        <li><b>Watershed-scale conditions:</b> evapotranspiration, soil moisture, vegetation health, and precipitation, averaged across an entire river basin rather than a single point.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="info-panel" id="panel-examples">
+    <div class="info-panel-inner">
+      <div class="suggestions" id="suggestions">
       <button type="button">What is the annual precipitation in Kentucky from 2010 to 2020?</button>
       <button type="button">Give me 7-day historical and 14-day forecast precipitation and temperature for Columbus, Ohio</button>
       <button type="button">What is the annual land evapotranspiration in Fresno, California for 2023?</button>
@@ -260,7 +327,12 @@
       <button type="button">Does rainfall correlate with measured nitrate levels in the River Raisin watershed in Michigan?</button>
       <button type="button">What is the climate outlook for the River Raisin watershed?</button>
       <button type="button">What is the climate outlook for the Western Lake Erie Basin?</button>
+      </div>
     </div>
+  </div>
+
+  <div class="card">
+    <div id="log"></div>
     <form id="chat-form">
       <input type="text" id="input" placeholder="Ask a hydrology or climate question..." autocomplete="off">
       <button type="submit" id="send-btn">Send</button>
@@ -348,10 +420,33 @@
     },
   };
 
+  // Info-bar accordion: "Meet the Agent" and "Need Inspiration?" each toggle their
+  // own panel, collapsed by default so neither one permanently occupies space.
+  // Opening one closes any other that was open, matching a standard single-open
+  // accordion/FAQ pattern.
+  const infoToggles = document.querySelectorAll('.info-toggle');
+  function closeAllInfoPanels() {
+    infoToggles.forEach(btn => {
+      btn.classList.remove('active');
+      document.getElementById(btn.dataset.panel).classList.remove('open');
+    });
+  }
+  infoToggles.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = document.getElementById(btn.dataset.panel);
+      const wasOpen = panel.classList.contains('open');
+      closeAllInfoPanels();
+      if (!wasOpen) {
+        panel.classList.add('open');
+        btn.classList.add('active');
+      }
+    });
+  });
+
   suggestions.addEventListener('click', (e) => {
     if (e.target.tagName === 'BUTTON') {
       input.value = e.target.textContent;
-      suggestions.style.display = 'none';
+      closeAllInfoPanels();
       form.requestSubmit();
     }
   });
@@ -360,7 +455,7 @@
     e.preventDefault();
     const message = input.value.trim();
     if (!message || activeAbortController) return;
-    suggestions.style.display = 'none';
+    closeAllInfoPanels();
     input.value = '';
     sendMessage(message);
   });
@@ -426,7 +521,7 @@
       if (err.name === 'AbortError') {
         addAssistantMessage({ reply: 'Stopped.' }, false, turnDiv, true);
       } else {
-        addAssistantMessage({ reply: `Could not reach Hydroinformatics AI Agent's backend: ${err.message}. If BACKEND_URL is still the placeholder, this page hasn't been configured yet.` }, true, turnDiv);
+        addAssistantMessage({ reply: `Could not reach HydroinformatiX's backend: ${err.message}. If BACKEND_URL is still the placeholder, this page hasn't been configured yet.` }, true, turnDiv);
       }
     } finally {
       activeAbortController = null;
@@ -513,7 +608,7 @@
     if (idx === -1) return;
     for (let i = turns.length - 1; i >= idx; i--) turns[i].remove();
     history = history.slice(0, idx * 2);
-    suggestions.style.display = 'none';
+    closeAllInfoPanels();
     sendMessage(newText);
   }
 
