@@ -654,6 +654,16 @@
     bubble.textContent = data.reply || '(no response)';
     div.appendChild(bubble);
 
+    // Maps/heatmaps render first, right after the reply, so the visual is the
+    // first thing seen rather than buried below tables and charts.
+    if (!isError && data.location) {
+      if (data.location.heatmaps && data.location.heatmaps.length > 1) {
+        div.appendChild(renderMultiMap(data.location));
+      } else {
+        div.appendChild(renderMap(data.location));
+      }
+    }
+
     if (!isError && data.tables && data.tables.length) {
       // Synthesis mode: one table per dataset (NDVI, then soil moisture, then
       // precipitation, etc.), each under its own heading -- kept separate rather
@@ -681,13 +691,6 @@
     }
     if (!isError && data.plotly) {
       div.appendChild(renderPlotlyChart(data.plotly));
-    }
-    if (!isError && data.location) {
-      if (data.location.heatmaps && data.location.heatmaps.length > 1) {
-        div.appendChild(renderMultiMap(data.location));
-      } else {
-        div.appendChild(renderMap(data.location));
-      }
     }
 
     if (!isError && data.source) {
