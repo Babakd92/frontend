@@ -651,6 +651,53 @@
   function addAssistantMessage(data, isError, parentEl, isMuted) {
     const div = document.createElement('div');
     div.className = 'msg assistant';
+
+    // Tailored, one-off multi-section layout for a specific demo response (the
+    // backend only sets `data.blocks` for one particular River Raisin demo combo --
+    // every other question has no `blocks` field and falls through to the normal
+    // rendering below, untouched).
+    if (!isError && data.blocks && data.blocks.length) {
+      data.blocks.forEach(block => {
+        if (block.type === 'text') {
+          if (!block.text) return;
+          const bubble = document.createElement('div');
+          bubble.className = 'bubble';
+          bubble.textContent = block.text;
+          div.appendChild(bubble);
+        } else if (block.type === 'heatmaps') {
+          if (block.location && block.location.heatmaps && block.location.heatmaps.length) {
+            div.appendChild(renderMultiMap(block.location));
+          }
+        } else if (block.type === 'tables') {
+          (block.tables || []).forEach(t => {
+            if (!t || !t.columns || !t.rows || !t.rows.length) return;
+            const heading = document.createElement('div');
+            heading.className = 'table-label';
+            heading.textContent = t.label;
+            div.appendChild(heading);
+            div.appendChild(renderTable(t));
+          });
+        } else if (block.type === 'charts' && block.charts && block.charts.length) {
+          const grid = document.createElement('div');
+          grid.className = 'chart-grid';
+          block.charts.forEach(c => grid.appendChild(renderChart(c)));
+          div.appendChild(grid);
+        }
+      });
+
+      if (data.source) {
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.innerHTML = `Source: <b>${escapeHtml(data.source.name)}</b> (${escapeHtml(data.source.agency)})`
+          + (data.limitations ? `<br>${escapeHtml(data.limitations)}` : '');
+        div.appendChild(meta);
+      }
+
+      parentEl.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+      return;
+    }
+
     const bubble = document.createElement('div');
     bubble.className = 'bubble' + (isError ? ' error' : '') + (isMuted ? ' muted' : '');
     bubble.textContent = data.reply || '(no response)';
