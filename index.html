@@ -203,6 +203,19 @@
     .map-lightbox{padding:16px;}
     .map-lightbox-panel .leaflet-container{height:min(60vh,480px);}
   }
+  .dl-btn{
+    display:inline-flex;align-items:center;gap:5px;font-family:'Inter',sans-serif;
+    font-size:11.5px;font-weight:600;color:var(--teal-dark);
+    background:rgba(15,181,166,0.10);border:1px solid rgba(15,181,166,0.35);
+    border-radius:999px;padding:5px 11px;cursor:pointer;transition:.15s ease;
+  }
+  .dl-btn:hover{background:rgba(15,181,166,0.18);transform:translateY(-1px);}
+  .dl-btn:disabled{opacity:.5;cursor:default;transform:none;}
+  .dl-btn svg{width:11px;height:11px;flex:none;}
+  .table-actions{display:flex;justify-content:flex-end;padding:8px 10px;
+    border-top:1px solid rgba(26,18,38,0.08);}
+  .map-actions{display:flex;justify-content:flex-end;padding:6px 4px 0;}
+
   .map-caption{display:flex;gap:16px;flex-wrap:wrap;padding:8px 4px 2px;font-size:12.5px;color:rgba(26,18,38,0.7);}
   .map-caption .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;}
   .caption-heatmap{display:flex;flex-direction:column;gap:4px;}
@@ -726,7 +739,7 @@
         div.appendChild(renderTable(t));
       });
     } else if (!isError && data.table && data.table.columns && data.table.rows.length) {
-      div.appendChild(renderTable(data.table));
+      div.appendChild(renderTable(data.table, data.source && data.source.name));
     }
     if (!isError && data.charts && data.charts.length) {
       if (data.chart_layout === 'grid') {
@@ -754,7 +767,120 @@
     log.scrollTop = log.scrollHeight;
   }
 
-  function renderTable(table) {
+  // --- Download helpers (heatmap image + data table) ---------------------
+
+  function slugify(s) {
+    return (s || 'hydroinformatix').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'hydroinformatix';
+  }
+
+  function triggerBlobDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  const DOWNLOAD_ICON_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5v9M4.5 7l3.5 3.5L11.5 7"/><path d="M2 12.5v1.2a.8.8 0 0 0 .8.8h10.4a.8.8 0 0 0 .8-.8v-1.2"/></svg>';
+
+  function makeDownloadButton(label, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dl-btn';
+    btn.innerHTML = `${DOWNLOAD_ICON_SVG}<span>${escapeHtml(label)}</span>`;
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span>Preparing…</span>`;
+      try {
+        await onClick();
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    });
+    return btn;
+  }
+
+  function downloadTableCSV(table, filenameHint) {
+    const esc = (v) => {
+      const s = v === null || v === undefined ? '' : String(v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const lines = [table.columns.map(esc).join(',')];
+    table.rows.forEach(row => lines.push(row.map(esc).join(',')));
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    triggerBlobDownload(blob, `${slugify(filenameHint)}.csv`);
+  }
+
+  // Downloads the heatmap as a standalone, presentation-ready PNG: the real GEE
+  // raster plus its legend/colorbar composited underneath (the legend only exists as
+  // HTML/CSS in the caption today -- without baking it in, a bare raster download
+  // would lose the color-to-value mapping entirely). GEE's thumbnail endpoint sends
+  // permissive CORS headers (verified live), so fetch+canvas works reliably; the
+  // catch is a safety net for that changing, not the expected path.
+  async function downloadHeatmapImage(heatmap, filenameHint) {
+    try {
+      const resp = await fetch(heatmap.url);
+      if (!resp.ok) throw new Error(`fetch failed: ${resp.status}`);
+      const blob = await resp.blob();
+      const bitmap = await createImageBitmap(blob);
+
+      const PAD = 16, LEGEND_H = 74;
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height + LEGEND_H;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0);
+
+      const ly = bitmap.height + 24;
+      ctx.fillStyle = '#1A1226';
+      ctx.font = '600 15px Arial, sans-serif';
+      ctx.fillText(heatmap.label || '', PAD, ly);
+
+      const cb = heatmap.colorbar;
+      if (cb && cb.type === 'continuous' && cb.palette && cb.palette.length) {
+        const gw = Math.min(280, bitmap.width - 2 * PAD), gx = PAD, gy = ly + 12, gh = 12;
+        const grad = ctx.createLinearGradient(gx, 0, gx + gw, 0);
+        const n = cb.palette.length;
+        cb.palette.forEach((c, i) => grad.addColorStop(n > 1 ? i / (n - 1) : 0, c));
+        ctx.fillStyle = grad;
+        ctx.fillRect(gx, gy, gw, gh);
+        ctx.fillStyle = '#4A4E5A';
+        ctx.font = '12px Arial, sans-serif';
+        const unit = cb.unit ? ` ${cb.unit}` : '';
+        ctx.fillText(`${cb.min}${unit}`, gx, gy + gh + 16);
+        const maxText = `${cb.max}${unit}`;
+        ctx.fillText(maxText, gx + gw - ctx.measureText(maxText).width, gy + gh + 16);
+      } else if (cb && cb.type === 'categorical' && cb.entries) {
+        let sx = PAD;
+        const sy = ly + 14;
+        ctx.font = '12px Arial, sans-serif';
+        cb.entries.forEach(entry => {
+          ctx.fillStyle = entry.color;
+          ctx.fillRect(sx, sy - 10, 11, 11);
+          ctx.fillStyle = '#4A4E5A';
+          ctx.fillText(entry.label, sx + 16, sy);
+          sx += 16 + ctx.measureText(entry.label).width + 22;
+        });
+      }
+
+      const pngBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      triggerBlobDownload(pngBlob, `${slugify(filenameHint || heatmap.label)}.png`);
+    } catch (err) {
+      console.warn('Heatmap canvas download failed, opening the raw image instead:', err);
+      window.open(heatmap.url, '_blank');
+    }
+  }
+
+  function renderTable(table, filenameHint) {
     const wrap = document.createElement('div');
     wrap.className = 'table-wrap';
     const t = document.createElement('table');
@@ -779,6 +905,14 @@
       t.appendChild(tr);
     });
     wrap.appendChild(t);
+
+    const actions = document.createElement('div');
+    actions.className = 'table-actions';
+    actions.appendChild(makeDownloadButton('Download CSV', () => {
+      downloadTableCSV(table, filenameHint || table.label);
+    }));
+    wrap.appendChild(actions);
+
     return wrap;
   }
 
@@ -810,6 +944,14 @@
     const caption = document.createElement('div');
     caption.className = 'map-caption';
     box.appendChild(caption);
+    if (location.heatmap) {
+      const actions = document.createElement('div');
+      actions.className = 'map-actions';
+      actions.appendChild(makeDownloadButton('Download Map', () => {
+        downloadHeatmapImage(location.heatmap, location.heatmap.label || (location.query && location.query.name));
+      }));
+      box.appendChild(actions);
+    }
     requestAnimationFrame(() => drawMap(mapDiv, caption, location));
     // Capture phase: Leaflet's own click handling on the tile pane stops the event
     // from bubbling up to `box` on the (default) bubble phase, so a plain bubble-
@@ -817,7 +959,7 @@
     // Leaflet container (e.g. the caption text) -- capture runs before Leaflet sees
     // the event at all, so it fires no matter where inside the box was clicked.
     box.addEventListener('click', (e) => {
-      if (e.target.closest('.leaflet-control')) return;
+      if (e.target.closest('.leaflet-control') || e.target.closest('.dl-btn')) return;
       openMapLightbox(location);
     }, true);
     return box;
@@ -841,11 +983,17 @@
       const caption = document.createElement('div');
       caption.className = 'map-caption';
       box.appendChild(caption);
+      const actions = document.createElement('div');
+      actions.className = 'map-actions';
+      actions.appendChild(makeDownloadButton('Download Map', () => {
+        downloadHeatmapImage(hm, hm.label || (location.query && location.query.name));
+      }));
+      box.appendChild(actions);
       grid.appendChild(box);
       requestAnimationFrame(() => drawMap(mapDiv, caption, location, hm));
       // Capture phase -- same reasoning as renderMap() above.
       box.addEventListener('click', (e) => {
-        if (e.target.closest('.leaflet-control')) return;
+        if (e.target.closest('.leaflet-control') || e.target.closest('.dl-btn')) return;
         openMapLightbox(location, hm);
       }, true);
     });
@@ -870,6 +1018,15 @@
     const caption = document.createElement('div');
     caption.className = 'map-caption';
     mapLightboxPanel.appendChild(caption);
+    const heatmap = heatmapOverride || location.heatmap;
+    if (heatmap) {
+      const actions = document.createElement('div');
+      actions.className = 'map-actions';
+      actions.appendChild(makeDownloadButton('Download Map', () => {
+        downloadHeatmapImage(heatmap, heatmap.label || (location.query && location.query.name));
+      }));
+      mapLightboxPanel.appendChild(actions);
+    }
     mapLightbox.classList.add('open');
     // The panel must be visible (display:flex) before Leaflet measures its
     // container, so draw on the next frame rather than synchronously here.
