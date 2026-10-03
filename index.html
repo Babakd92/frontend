@@ -1335,32 +1335,66 @@
 
   // Daily streamflow discharge: a single plain line, same style as the generic fallback
   // but with a title and short-form date labels to match the other domain charts.
+  // Discharge line on the left axis; when the result carries daily precipitation, rainfall
+  // bars on a second RIGHT axis. The rain axis is inverted (bars hang from the top, the
+  // standard hydrograph layout) and the flow axis is given headroom, so a rain burst and
+  // the flow peak it causes don't draw over each other.
   function drawStreamflowDischargeChart(canvas, chart) {
+    const known = (arr) => (arr || []).filter(v => v !== null && v !== undefined);
+    const hasPrecip = known(chart.precip).length > 0;
+    const maxQ = Math.max(0, ...known(chart.values));
+    const maxP = Math.max(0, ...known(chart.precip));
+
+    const datasets = [{
+      label: chart.y_label,
+      data: chart.values,
+      borderColor: '#0FB5A6',
+      backgroundColor: 'rgba(15,181,166,0.12)',
+      fill: true,
+      pointRadius: 2,
+      spanGaps: true,
+      tension: 0.25,
+      yAxisID: 'y',
+      order: 0,
+    }];
+    const scales = {
+      x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 60, color: '#1A1226' } },
+      y: { position: 'left', title: { display: true, text: chart.y_label, color: '#1A1226' }, ticks: { color: '#1A1226' } },
+    };
+
+    if (hasPrecip) {
+      datasets.push({
+        type: 'bar',
+        label: chart.precip_label,
+        data: chart.precip,
+        backgroundColor: 'rgba(66,146,198,0.6)',
+        borderWidth: 0,
+        barPercentage: 0.9,
+        categoryPercentage: 1,
+        yAxisID: 'yPrecip',
+        order: 1,
+      });
+      scales.yPrecip = {
+        position: 'right', reverse: true, beginAtZero: true,
+        suggestedMax: Math.max(maxP * 2.6, 1),
+        grid: { drawOnChartArea: false },
+        title: { display: true, text: chart.precip_label, color: '#1A1226' },
+        ticks: { color: '#1A1226' },
+      };
+      if (maxQ > 0) scales.y.suggestedMax = maxQ / 0.62;
+    }
+
     new Chart(canvas, {
       type: 'line',
-      data: {
-        labels: chart.labels.map(shortDate),
-        datasets: [{
-          label: chart.y_label,
-          data: chart.values,
-          borderColor: '#0FB5A6',
-          backgroundColor: 'rgba(15,181,166,0.12)',
-          fill: true,
-          pointRadius: 2,
-          spanGaps: true,
-          tension: 0.25,
-        }],
-      },
+      data: { labels: chart.labels.map(shortDate), datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
+        interaction: hasPrecip ? { mode: 'index', intersect: false } : undefined,
         plugins: {
           title: { display: true, text: chart.title, color: '#1A1226', font: { size: 12, weight: '700' } },
-          legend: { display: false },
+          legend: { display: hasPrecip, labels: { color: '#1A1226' } },
         },
-        scales: {
-          x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 60, color: '#1A1226' } },
-          y: { title: { display: true, text: chart.y_label, color: '#1A1226' }, ticks: { color: '#1A1226' } },
-        },
+        scales,
       },
     });
   }
